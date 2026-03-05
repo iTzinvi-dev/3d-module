@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Particle System</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+            background-color: #050505;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // 1. Core Setup: Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        // Add a subtle fog to make distant particles fade out
+        scene.fog = new THREE.FogExp2(0x050505, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.z = 500;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Particle Geometry Setup
+        const particleCount = 15000;
+        const geometry = new THREE.BufferGeometry();
+        
+        // Arrays to hold position and color data for each particle
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const color = new THREE.Color();
+
+        for (let i = 0; i < particleCount; i++) {
+            // Random positions spread out in a cubic volume
+            const x = (Math.random() - 0.5) * 2000;
+            const y = (Math.random() - 0.5) * 2000;
+            const z = (Math.random() - 0.5) * 2000;
+
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+
+            // Give particles a gradient color based on their X position
+            color.setHSL((x / 2000) + 0.5, 0.8, 0.6);
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+        }
+
+        // Attach data to geometry
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        // 3. Particle Material Setup
+        const material = new THREE.PointsMaterial({
+            size: 4,
+            vertexColors: true, // Tell material to use our color array
+            transparent: true,
+            opacity: 0.8,
+            sizeAttenuation: true // Makes particles smaller when further away
+        });
+
+        // Combine geometry and material into a Points object and add to scene
+        const particleSystem = new THREE.Points(geometry, material);
+        scene.add(particleSystem);
+
+        // 4. Interactivity (Mouse Tracking)
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetX = 0;
+        let targetY = 0;
+
+        const windowHalfX = window.innerWidth / 2;
+        const windowHalfY = window.innerHeight / 2;
+
+        document.addEventListener('mousemove', (event) => {
+            // Normalize mouse coordinates from center of screen
+            mouseX = (event.clientX - windowHalfX);
+            mouseY = (event.clientY - windowHalfY);
+        });
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 5. Animation Loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // Smoothly interpolate current target rotation towards mouse position
+            targetX = mouseX * 0.001;
+            targetY = mouseY * 0.001;
+
+            // Rotate the entire particle system slowly over time
+            particleSystem.rotation.y = elapsedTime * 0.05;
+            particleSystem.rotation.x = elapsedTime * 0.02;
+
+            // Move the camera based on mouse movement for a parallax effect
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Start the loop
+        animate();
+    </script>
+</body>
+</html>
+
